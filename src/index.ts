@@ -23,8 +23,25 @@ async function show(answer: string, ctx: ExtensionCommandContext): Promise<void>
   });
 }
 
+export function resolveMaxOutputTokens(modelMaxTokens: number | undefined): number {
+  return Number.isFinite(modelMaxTokens) && (modelMaxTokens ?? 0) > 0 ? Math.min(1200, modelMaxTokens!) : 1200;
+}
+
 export default function sideChat(pi: ExtensionAPI): void {
   let running = false;
+  let currentAbort: AbortController | undefined;
+
+  pi.registerCommand("btw-cancel", {
+    description: "Cancel the currently running ephemeral side question",
+    handler: async (_args, ctx) => {
+      if (!currentAbort) { ctx.ui.notify("No /btw side question is running.", "warning"); return; }
+      currentAbort.abort();
+      ctx.ui.notify("Cancelled the /btw side question.", "info");
+    },
+  });
+
+  pi.on("session_shutdown", () => { currentAbort?.abort(); });
+
   pi.registerCommand("btw", {
     description: "Ask one ephemeral, tool-free side question without changing the main transcript",
     handler: async (args, ctx) => {
@@ -37,6 +54,7 @@ export default function sideChat(pi: ExtensionAPI): void {
       if (!snapshot) { ctx.ui.notify("No stable conversation context is available yet.", "warning"); return; }
       running = true;
       const abort = new AbortController();
+      currentAbort = abort;
       try {
         const auth = await ctx.modelRegistry.getApiKeyAndHeaders(model);
         if (!auth.ok) throw new Error(auth.error);
@@ -49,15 +67,15 @@ export default function sideChat(pi: ExtensionAPI): void {
           headers: auth.headers,
           env: auth.env,
           signal: abort.signal,
-          maxTokens: Math.min(1200, model.maxTokens),
+          maxTokens: resolveMaxOutputTokens(model.maxTokens),
           reasoning: "off",
           cacheRetention: "none",
         });
         const answer = response.content.filter((x): x is { type: "text"; text: string } => x.type === "text").map(x => x.text).join("\n").trim();
         await show(answer || "The side model returned no text.", ctx);
       } catch (error) {
-        ctx.ui.notify(`/btw failed: ${error instanceof Error ? error.message : String(error)}`, "error");
-      } finally { running = false; }
+        if (!abort.signal.aborted) ctx.ui.notify(`/btw failed: ${error instanceof Error ? error.message : String(error)}`, "error");
+      } finally { currentAbort = undefined; running = false; }
     },
   });
 }

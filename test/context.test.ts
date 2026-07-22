@@ -1,5 +1,6 @@
 import { describe,expect,test } from 'bun:test';
 import { buildConversationSnapshot,SIDE_SYSTEM_PROMPT } from '../src/context.js';
+import { resolveMaxOutputTokens } from '../src/index.js';
 describe('snapshot',()=>{
  test('keeps user assistant and tool results but excludes thinking and custom entries',()=>{
   const text=buildConversationSnapshot([
@@ -12,4 +13,5 @@ describe('snapshot',()=>{
  });
  test('retains the newest tail under a cap',()=>{const text=buildConversationSnapshot([{type:'message',message:{role:'user',content:'old'.repeat(100)}},{type:'message',message:{role:'assistant',content:'new fact'}}],30);expect(text).toStartWith('[Earlier');expect(text).toContain('new fact');});
  test('system contract forbids tools and main-thread steering',()=>{expect(SIDE_SYSTEM_PROMPT).toContain('no tools');expect(SIDE_SYSTEM_PROMPT).toContain('Never instruct or steer');});
+ test('output cap is safe for missing and malformed model limits',()=>{expect(resolveMaxOutputTokens(undefined)).toBe(1200);expect(resolveMaxOutputTokens(Number.NaN)).toBe(1200);expect(resolveMaxOutputTokens(800)).toBe(800);expect(resolveMaxOutputTokens(5000)).toBe(1200);});
 });

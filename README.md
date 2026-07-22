@@ -19,12 +19,12 @@ Experimental `/btw` side questions for Pi. It snapshots stable main-session mess
 ## Install
 
 ```bash
-pi install git:github.com/baladithyab/pi-side-chat@v0.1.0
+pi install git:github.com/baladithyab/pi-side-chat@v0.1.1
 ```
 
 ## Current scope
 
-V0.1 uses the active parent model, disables tools, requests at most 1,200 output tokens, requests no prompt-cache retention, and keeps no side-answer history. It does not yet provide answer navigation, copy, cancellation during generation, configurable side models, or explicit promotion into a fork.
+V0.1 uses the active parent model, disables tools, requests at most 1,200 output tokens, requests no prompt-cache retention, and keeps no side-answer history. Run `/btw-cancel` to abort an in-flight side request independently. It does not yet provide answer navigation, copy, configurable side models, or explicit promotion into a fork.
 
 This package is experimental. Validate transcript isolation and concurrent behavior in a disposable Pi home before primary installation.
 
